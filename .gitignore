@@ -1,0 +1,75 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Composer
+vendor/
+# Keep composer.lock for production consistency
+
+# Logs
+logs/
+*.log
+error_log
+access_log
+
+# Database (keep the schema file for Docker init)
+# *.sql  # Commented out to keep rice_mill_db (11).sql
+*.sql.backup
+backup.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration (keep config.php as it uses env vars now)
+# config.php  # Safe to commit - uses environment variables
+db_config.php
+*_private.php
+
+# Session files
+sessions/
+tmp/
+
+# Cache
+cache/
+*.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Uploads (if any)
+uploads/
+files/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Sensitive files
+*.key
+*.pem
+*.cert
+*.p12
+
+# Large files (optional - uncomment if needed)
+# *.png
+# *.jpg
+# *.jpeg
+# *.gif
+# *.pdf
+

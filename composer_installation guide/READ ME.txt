@@ -1,0 +1,34 @@
+1.Run the installer and make sure it adds Composer to your PATH.
+
+2.You should get this.
+
+PHP version 8.2.12
+C:\xampp\php\php.exe
+
+Proxy: none
+
+Add to System path:
+C:\xampp\php
+
+3. Enable ZIP and INTL extensions
+open: C:\xampp\php\php.ini
+
+replace:
+;extension=zip
+;extension=intl
+
+with
+
+extension=zip
+extension=intl
+
+and create:
+extension=php_sockets.dll
+extension=php_com_dotnet.dll
+extension=php_mbstring.dll
+
+4.Save the file and restart Apache in XAMPP Control Panel
+
+5. open cmd and run:
+cd C:\xampp\htdocs\rice
+composer require mike42/escpos-php

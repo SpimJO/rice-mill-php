@@ -1,0 +1,37 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+README*
+BLOCKCHAIN_*.md
+
+# Node modules (backend has its own)
+backend/node_modules
+backend/dist
+
+# Environment files (use production configs)
+backend/.env.local
+backend/.env.development
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Original backups
+original/
+posvoid/
+
+# Composer installation guide
+composer_installation guide/

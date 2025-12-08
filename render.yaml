@@ -1,0 +1,70 @@
+# Render.com Blueprint for Rice Mill Blockchain System
+# This file defines all services needed for deployment
+
+services:
+  # MySQL Database
+  - type: pserv
+    name: rice-mill-db
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile.db
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        generateValue: true
+      - key: MYSQL_DATABASE
+        value: rice_mill_db
+      - key: MYSQL_USER
+        value: rice_mill_user
+      - key: MYSQL_PASSWORD
+        generateValue: true
+
+  # PHP Web Application
+  - type: web
+    name: rice-mill-web
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: rice-mill-db
+          property: host
+      - key: DB_USER
+        value: rice_mill_user
+      - key: DB_PASSWORD
+        fromService:
+          type: pserv
+          name: rice-mill-db
+          envVarKey: MYSQL_PASSWORD
+      - key: DB_NAME
+        value: rice_mill_db
+      - key: BACKEND_API_URL
+        fromService:
+          type: web
+          name: rice-mill-backend
+          property: host
+
+  # Node.js Backend API
+  - type: web
+    name: rice-mill-backend
+    env: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: VERSION
+        value: v1
+      - key: BASEROUTE
+        value: api
+      - key: ENC_KEY_SECRET
+        generateValue: true
+      - key: CIPHER_KEY_SECRET
+        generateValue: true
+      - key: API_KEY_SECRET
+        generateValue: true
+      - key: WHITELIST
+        sync: false
