@@ -24,13 +24,13 @@ if ($current_role !== 'Admin') {
 /* ============================
    🔗 Blockchain Logging Function (Hyperledger Fabric)
    ============================ */
-function addBlockchainLog($conn, $user_id, $action, $target, $data) {
+function addBlockchainLog($user_id, $action, $target, $data) {
     // Use Hyperledger Fabric API with database fallback
     $dataArray = is_string($data) ? json_decode($data, true) : $data;
     if ($dataArray === null && is_string($data)) {
         $dataArray = $data; // Use as-is if not JSON
     }
-    addBlockchainLogWithFallback($conn, $user_id, $action, $target, $dataArray);
+    addBlockchainLogWithFallback($GLOBALS['conn'], $user_id, $action, $target, $dataArray);
 }
 
 
@@ -65,7 +65,7 @@ if (isset($_POST['add'])) {
         "total_amount" => $amount,
         "date" => $date
     ]);
-    addBlockchainLog($conn, $user_id, "Add Purchase", $supplier, $logData);
+    addBlockchainLog($user_id, "Add Purchase", $supplier, $logData);
 
     header("Location: buyingpalay.php");
     exit;
@@ -97,7 +97,7 @@ if (isset($_POST['void'])) {
         "price" => $info['price'] ?? '',
         "status" => "Voided"
     ]);
-    addBlockchainLog($conn, $current_user_id, "Void Purchase", "Purchase ID: $id", $logData);
+    addBlockchainLog($current_user_id, "Void Purchase", "Purchase ID: $id", $logData);
 
     header("Location: buyingpalay.php");
     exit;
@@ -153,7 +153,7 @@ if (isset($_POST['paid'])) {
                 "price" => $purchase['price'],
                 "status" => "Paid"
             ]);
-            addBlockchainLog($conn, $current_user_id, "Mark as Paid", "Purchase ID: $id", $logData);
+            addBlockchainLog($current_user_id, "Mark as Paid", "Purchase ID: $id", $logData);
 
         } catch (Exception $e) {
             $conn->rollback();
@@ -325,10 +325,10 @@ table tr:hover { background:#f9f9f9; }
                 if ($row['payment_status'] === 'Pending') {
                     echo '<button type="button" class="btn" style="background:#2980b9;" onclick="openPrintPV(' . $row['id'] . ')">Print PV</button> ';
 
-                    echo '<form method="POST" style="display:inline-block;">
-                            <input type="hidden" name="id" value="' . $row['id'] . '">
-                            <button type="submit" name="paid" class="btn" style="background:' . ($row['pv_printed'] ? '#27ae60' : '#aaa') . ';" ' . ($row['pv_printed'] ? '' : 'disabled') . '>Mark as Paid</button>
-                          </form> ';
+                                        echo '<form method="POST" style="display:inline-block;">
+                                                        <input type="hidden" name="id" value="' . $row['id'] . '">
+                                                        <button type="submit" name="paid" class="btn" style="background:#27ae60;" ' . ($row['pv_printed'] ? '' : 'disabled') . ' title="Print PV first to enable">Mark as Paid</button>
+                                                    </form> ';
 
                     echo '<form method="POST" style="display:inline-block;">
                             <input type="hidden" name="id" value="' . $row['id'] . '">

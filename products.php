@@ -1,16 +1,16 @@
 <?php 
 include "db.php"; 
-include "blockchain_api.php"; // Include Hyperledger Fabric API helper
+include "blockchain_api.php"; // Hyperledger Fabric API helper
 session_start();
 date_default_timezone_set('Asia/Manila'); 
 
-function add_blockchain_log($conn, $user_id, $action, $target_user, $data) {
+function add_blockchain_log($user_id, $action, $target_user, $data) {
     // Use Hyperledger Fabric API with database fallback
     $dataArray = is_string($data) ? json_decode($data, true) : $data;
     if ($dataArray === null && is_string($data)) {
         $dataArray = $data; // Use as-is if not JSON
     }
-    addBlockchainLogWithFallback($conn, $user_id, $action, $target_user, $dataArray);
+    addBlockchainLogWithFallback($GLOBALS['conn'], $user_id, $action, $target_user, $dataArray);
 }
 
 // === Require login === 
@@ -114,7 +114,7 @@ $log_data = json_encode([
     'price_5kg'  => $price_5,
     'reason' => $reason
 ]);
-add_blockchain_log($conn, $current_user_id, 'Inventory Update', $current_user_name, $log_data);
+add_blockchain_log($current_user_id, 'Inventory Update', $current_user_name, $log_data);
 
         echo json_encode([
             'success' => true,
@@ -231,7 +231,7 @@ if (isset($_POST['add_product'])) {
             'price_5kg'  => $price_5,
             'deducted_from_rice_types' => $total_used_kg
         ]);
-        add_blockchain_log($conn, $current_user_id, 'Product Added', $current_user_name, $log_data);
+        add_blockchain_log($current_user_id, 'Product Added', $current_user_name, $log_data);
 
         $_SESSION['success_message'] = "✅ Product added successfully! Inventory updated and total available rice deducted.";
     } catch (Exception $e) {
@@ -521,7 +521,7 @@ function updateProgress() {
     progressFill.textContent = enteredKg + ' KG';
     remainingKg.textContent = Math.max(maxStock - enteredKg, 0);
 
-    if(enteredKg > maxStock){
+    if(maxStock > 0 && enteredKg > maxStock){
         progressFill.style.background = '#dc3545';
         addForm.querySelector('#addProductBtn').disabled = true;
     } else {
