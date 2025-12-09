@@ -3,17 +3,8 @@ date_default_timezone_set('Asia/Manila');
 // reports.php - Full file (standalone)
 // include DB and start session
 include "db.php";
-include "blockchain_api.php"; // Include Hyperledger Fabric API helper
+include "blockchain_api.php"; // Hyperledger Fabric API helper
 session_start();
-// === Blockchain logging helper (Hyperledger Fabric) ===
-function createBlockchainLog($conn, $user_id, $action, $target_user, $data) {
-    // Use Hyperledger Fabric API with database fallback
-    $dataArray = is_string($data) ? json_decode($data, true) : $data;
-    if ($dataArray === null && is_string($data)) {
-        $dataArray = $data; // Use as-is if not JSON
-    }
-    addBlockchainLogWithFallback($conn, $user_id, $action, $target_user, $dataArray);
-}
 
 // === Require login ===
 if (!isset($_SESSION['user_id'])) {
@@ -98,7 +89,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv' && isset($_SESSION['repor
         'export_time' => date('Y-m-d H:i:s'),
         'rows' => is_array($_SESSION['report_data']) ? count($_SESSION['report_data']) : 0
     ]);
-    createBlockchainLog($conn, $export_user_id, 'Export Report CSV', $current_user_name, $export_details);
+    createBlockchainLog($export_user_id, 'Export Report CSV', $current_user_name, $export_details);
     
     fclose($output);
     exit;
@@ -182,13 +173,13 @@ if (isset($_POST['generate'])) {
                         SUM(s.subtotal) AS subtotal,
                         SUM(s.discount) AS discount,
                         SUM(s.total) AS total,
-                        u.name AS operator_name,
+                        ANY_VALUE(u.name) AS operator_name,
                         DATE(MAX(s.created_at)) AS sale_date
                     FROM sales s
                     LEFT JOIN users u ON s.operator_user_id = u.user_id
                     WHERE DATE(s.created_at) BETWEEN '$from_esc' AND '$to_esc'
                     " . (!empty($transaction_id) ? " AND s.transaction_id = '$tx_esc' " : "") . "
-                    GROUP BY s.transaction_id, u.name
+                    GROUP BY s.transaction_id
                     ORDER BY MIN(s.created_at) ASC
                 ";
                 $report_columns = ['ID','Transaction ID','Rice Types','25kg Sacks','50kg Sacks','5kg Sacks','Subtotal','Discount','Total','Operator','Date'];
@@ -535,7 +526,7 @@ $log_data = json_encode([
     'frequency' => $frequency,
     'rows' => count($report_data)
 ]);
-createBlockchainLog($conn, intval($current_user_id), 'Generate Report', $current_user_name, $log_data);
+createBlockchainLog(intval($current_user_id), 'Generate Report', $current_user_name, $log_data);
 }
 ?>
 <!DOCTYPE html>
@@ -675,6 +666,15 @@ input[type=text] {
     border: 1px solid #bbb;
     font-size: 14px;
     box-sizing: border-box;
+}
+
+input[type=date]:hover,
+input[type=week]:hover,
+input[type=month]:hover,
+select:hover,
+input[type=text]:hover {
+    border-color: #6a7a48;
+    box-shadow: 0 0 3px rgba(106, 122, 72, 0.18);
 }
 
 input[type=date]:focus,

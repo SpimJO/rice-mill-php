@@ -1,17 +1,8 @@
 ﻿<?php
 include "db.php";
-include "blockchain_api.php"; // Include Hyperledger Fabric API helper
+include "blockchain_api.php"; // Hyperledger Fabric API helper
 session_start();
 date_default_timezone_set('Asia/Manila'); 
-
-function createBlockchainLog($conn, $user_id, $action, $target_user, $data) {
-  // Use Hyperledger Fabric API with database fallback
-  $dataArray = is_string($data) ? json_decode($data, true) : $data;
-  if ($dataArray === null && is_string($data)) {
-      $dataArray = $data; // Use as-is if not JSON
-  }
-  addBlockchainLogWithFallback($conn, $user_id, $action, $target_user, $dataArray);
-}
 
 // require login
 if (!isset($_SESSION['user_id'])) {
@@ -88,8 +79,8 @@ if (isset($_POST['add'])) {
         }
     }
 
-    createBlockchainLog($conn, $current_user_id_int, 'Add Milling', $operator_user_id, 
-        json_encode(['rice_type'=>$rice_name, 'quantity'=>$quantity, 'output'=>$milled_output]));
+    createBlockchainLog($current_user_id_int, 'Add Milling', $operator_user_id, 
+      json_encode(['rice_type'=>$rice_name, 'quantity'=>$quantity, 'output'=>$milled_output]));
     header("Location: milling.php");
     exit();
 }
@@ -173,7 +164,7 @@ if (isset($_POST['edit'])) {
         }
     }
 
-    createBlockchainLog($conn, $current_user_id_int, 'Edit Milling', $operator_user_id_posted ?? $current_user_id, 
+    createBlockchainLog($current_user_id_int, 'Edit Milling', $operator_user_id_posted ?? $current_user_id, 
     json_encode(['milling_id'=>$id, 'new_quantity'=>$quantity, 'new_output'=>$milled_output]));
 header("Location: milling.php");
 exit();
@@ -228,7 +219,7 @@ if (isset($_POST['delete'])) {
         $stmt->close();
     }
 
-    createBlockchainLog($conn, $current_user_id_int, 'Delete Milling', $operator_id ?? '', 
+    createBlockchainLog($current_user_id_int, 'Delete Milling', $operator_id ?? '', 
     json_encode(['milling_id'=>$id, 'rice_type'=>$rice_name]));
 header("Location: milling.php");
 exit();
@@ -249,7 +240,6 @@ if (isset($_POST['add_rice_type'])) {
 
       // ✅ Create blockchain log for adding a new rice type
       createBlockchainLog(
-          $conn,
           intval($_SESSION['user_id']),
           'Add Rice Type',
           $_SESSION['name'] ?? '',
@@ -287,7 +277,6 @@ if (isset($_POST['delete_rice_type'])) {
 
       // ✅ Create blockchain log for deleting a rice type
       createBlockchainLog(
-          $conn,
           intval($_SESSION['user_id']),
           'Delete Rice Type',
           $_SESSION['name'] ?? '',
@@ -327,8 +316,8 @@ if (isset($_POST['approve'])) {
     $updateStock->execute();
     $updateStock->close();
 
-    createBlockchainLog($conn, $current_user_id_int, 'Approve Milling', $current_user_name, 
-        json_encode(['milling_id'=>$id, 'rice_name'=>$rice_name, 'milled_output'=>$milled_output]));
+    createBlockchainLog($current_user_id_int, 'Approve Milling', $current_user_name, 
+      json_encode(['milling_id'=>$id, 'rice_name'=>$rice_name, 'milled_output'=>$milled_output]));
     header("Location: milling.php");
     exit();
 }
@@ -345,7 +334,7 @@ if (isset($_POST['approve'])) {
         $stmt->execute();
         $stmt->close();
 
-        createBlockchainLog($conn, $current_user_id_int, 'Reject Milling', $current_user_name, 
+        createBlockchainLog($current_user_id_int, 'Reject Milling', $current_user_name, 
         json_encode(['milling_id'=>$id, 'remarks'=>$remarks]));
     header("Location: milling.php");
     exit();
