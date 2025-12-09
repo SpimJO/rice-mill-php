@@ -41,7 +41,8 @@ if (!$conn->query("SET @website_authorized = 1;")) {
 }
 
 // Backend API URL
-$backendApiUrl = getenv('BACKEND_API_URL') ?: 'http://localhost:3000';
+// $backendApiUrl = getenv('BACKEND_API_URL') ?: 'http://localhost:3000'; // Localhost (commented out)
+$backendApiUrl = getenv('BACKEND_API_URL') ?: 'https://plantar-dithyrambic-janette.ngrok-free.dev';
 
 // Function to get API key from backend
 function getApiKey() {
