@@ -79,8 +79,8 @@ if (isset($_POST['add'])) {
         }
     }
 
-    createBlockchainLog($current_user_id_int, 'Add Milling', $operator_user_id, 
-      json_encode(['rice_type'=>$rice_name, 'quantity'=>$quantity, 'output'=>$milled_output]));
+    addBlockchainLogWithFallback($conn, $current_user_id_int, 'Add Milling', $operator_user_id, 
+      ['rice_type'=>$rice_name, 'quantity'=>$quantity, 'output'=>$milled_output]);
     header("Location: milling.php");
     exit();
 }
@@ -164,8 +164,8 @@ if (isset($_POST['edit'])) {
         }
     }
 
-    createBlockchainLog($current_user_id_int, 'Edit Milling', $operator_user_id_posted ?? $current_user_id, 
-    json_encode(['milling_id'=>$id, 'new_quantity'=>$quantity, 'new_output'=>$milled_output]));
+    addBlockchainLogWithFallback($conn, $current_user_id_int, 'Edit Milling', $operator_user_id_posted ?? $current_user_id, 
+    ['milling_id'=>$id, 'new_quantity'=>$quantity, 'new_output'=>$milled_output]);
 header("Location: milling.php");
 exit();
 }
@@ -219,8 +219,8 @@ if (isset($_POST['delete'])) {
         $stmt->close();
     }
 
-    createBlockchainLog($current_user_id_int, 'Delete Milling', $operator_id ?? '', 
-    json_encode(['milling_id'=>$id, 'rice_type'=>$rice_name]));
+    addBlockchainLogWithFallback($conn, $current_user_id_int, 'Delete Milling', $operator_id ?? '', 
+    ['milling_id'=>$id, 'rice_type'=>$rice_name]);
 header("Location: milling.php");
 exit();
 }
@@ -239,12 +239,13 @@ if (isset($_POST['add_rice_type'])) {
       $stmt->close();
 
       // ✅ Create blockchain log for adding a new rice type
-      createBlockchainLog(
+        addBlockchainLogWithFallback(
+          $conn,
           intval($_SESSION['user_id']),
           'Add Rice Type',
           $_SESSION['name'] ?? '',
-          json_encode(['rice_type' => $type_name])
-      );
+          ['rice_type' => $type_name]
+        );
   }
 
   header("Location: milling.php");
@@ -276,12 +277,13 @@ if (isset($_POST['delete_rice_type'])) {
       $stmt->close();
 
       // ✅ Create blockchain log for deleting a rice type
-      createBlockchainLog(
+        addBlockchainLogWithFallback(
+          $conn,
           intval($_SESSION['user_id']),
           'Delete Rice Type',
           $_SESSION['name'] ?? '',
-          json_encode(['rice_type' => $type_name])
-      );
+          ['rice_type' => $type_name]
+        );
   }
 
   header("Location: milling.php");
@@ -316,8 +318,8 @@ if (isset($_POST['approve'])) {
     $updateStock->execute();
     $updateStock->close();
 
-    createBlockchainLog($current_user_id_int, 'Approve Milling', $current_user_name, 
-      json_encode(['milling_id'=>$id, 'rice_name'=>$rice_name, 'milled_output'=>$milled_output]));
+    addBlockchainLogWithFallback($conn, $current_user_id_int, 'Approve Milling', $current_user_name, 
+      ['milling_id'=>$id, 'rice_name'=>$rice_name, 'milled_output'=>$milled_output]);
     header("Location: milling.php");
     exit();
 }
@@ -334,8 +336,8 @@ if (isset($_POST['approve'])) {
         $stmt->execute();
         $stmt->close();
 
-        createBlockchainLog($current_user_id_int, 'Reject Milling', $current_user_name, 
-        json_encode(['milling_id'=>$id, 'remarks'=>$remarks]));
+        addBlockchainLogWithFallback($conn, $current_user_id_int, 'Reject Milling', $current_user_name, 
+        ['milling_id'=>$id, 'remarks'=>$remarks]);
     header("Location: milling.php");
     exit();
     }
@@ -437,7 +439,7 @@ if ($current_role == 'Admin') {
       <li class="active"><a href="milling.php"><i class="fa-solid fa-industry"></i> Milling Management</a></li>
       <li><a href="products.php"><i class="fa-solid fa-box"></i> Products & Inventory</a></li>
       <li><a href="reports.php"><i class="fa-solid fa-file-lines"></i> Reports</a></li>
-      <li><a href="blockchain.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
+      <li><a href="index.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
     </ul>
   </div>
   <div class="logout" onclick="window.location.href='logout.php'">

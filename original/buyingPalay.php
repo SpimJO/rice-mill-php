@@ -252,7 +252,7 @@ table tr:hover { background: #f9f9f9; }
       <li><a href="products.php"><i class="fa-solid fa-box"></i> Products</a></li>
       <li><a href="sales.php"><i class="fa-solid fa-peso-sign"></i> Sales</a></li>
       <li><a href="reports.php"><i class="fa-solid fa-file-lines"></i> Reports</a></li>
-      <li><a href="blockchain.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
+      <li><a href="index.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
     </ul>
   </div>
   <div class="logout" onclick="window.location.href='logout.php'">

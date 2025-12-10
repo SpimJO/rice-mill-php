@@ -8,7 +8,14 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
 include "db.php";
+include "blockchain_api.php";
 session_start();
+
+// Require login for POS access
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit();
+}
 
 // --- Prevent back button showing previous checkout ---
 if (isset($_SESSION['receipt_data']) && !isset($_GET['print'])) {
@@ -22,12 +29,26 @@ $current_user_id = $_SESSION['user_id'] ?? 1;
 $current_user_name = $_SESSION['name'] ?? 'Operator';
 $current_role = $_SESSION['role'] ?? 'Operator';
 
+// Simple blockchain logger helper
+function logBlockchain($conn, $userId, $action, $target, $data) {
+    addBlockchainLogWithFallback($conn, $userId, $action, $target, $data);
+}
+
 
 // Load receipt after redirect
 $receiptData = null;
 if (isset($_GET['print']) && isset($_SESSION['receipt_data'])) {
     $receiptData = $_SESSION['receipt_data'];
     unset($_SESSION['receipt_data']);
+
+    // Log reprint request when returning to print view
+    if (!empty($receiptData['transaction_id'])) {
+        logBlockchain($conn, $current_user_id, 'POS_RECEIPT_PRINT', $receiptData['transaction_id'], [
+            'transaction_id' => $receiptData['transaction_id'],
+            'operator' => $current_user_name,
+            'source' => 'POS_AUTO_PRINT'
+        ]);
+    }
 }
 
 // === Load inventory ===
@@ -123,9 +144,21 @@ if (isset($_POST['checkout'])) {
             'discount' => number_format($discount_value, 2),
             'total' => number_format($total, 2),
             'operator' => $current_user_name,
-            'date' => date("Y-m-d H:i:s")
+            'date' => date("Y-m-d H:i:s"),
+            'transaction_id' => $transaction_id
         ];
-        $_SESSION['receipt_data']['transaction_id'] = $transaction_id;
+
+        // Log POS checkout to blockchain
+        logBlockchain($conn, $current_user_id, 'POS_CHECKOUT', $transaction_id, [
+            'transaction_id' => $transaction_id,
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'discount_percent' => $discount_percent,
+            'discount_value' => $discount_value,
+            'total' => $total,
+            'operator' => $current_user_name
+        ]);
+
         // Redirect to prevent form resubmission
         header("Location: pos.php?print=1");
         exit;
@@ -728,17 +761,21 @@ const autoReceipt = receiptLines.join("\n");
 // --- Send to Printer ---
 (async () => {
   try {
-    const res = await fetch('print_receipt.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'receiptText=' + encodeURIComponent(autoReceipt)
-    });
-    const text = await res.text();
-    if (res.ok && text.trim() === 'OK') {
-      alert('Receipt sent to printer successfully!');
-    } else {
-      alert(text);
-    }
+        const res = await fetch('print_receipt.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                receiptText: autoReceipt,
+                transactionId: <?= json_encode($receiptData['transaction_id']) ?>,
+                source: 'POS_AUTO_PRINT'
+            })
+        });
+        const text = await res.text();
+        if (res.ok) {
+            alert(text);
+        } else {
+            alert(text || 'Print error');
+        }
   } catch (err) {
     alert('Connection error: ' + err);
   }

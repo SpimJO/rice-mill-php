@@ -30,7 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Please enter both username and password.";
     } else {
 
-        $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ? LIMIT 1");
+        // Case-insensitive lookup so Cashier/Operator/Admin can log in regardless of username casing
+        $stmt = $conn->prepare("SELECT * FROM users WHERE LOWER(user_id) = LOWER(?) LIMIT 1");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
