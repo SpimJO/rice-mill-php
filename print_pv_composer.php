@@ -1,5 +1,6 @@
 <?php
 include "db.php";
+include "blockchain_api.php";
 session_start();
 
 if (!isset($_GET['id'])) {
@@ -40,6 +41,15 @@ $update = $conn->prepare("
 ");
 $update->bind_param("si", $pv_number, $id);
 $update->execute();
+
+// Log PV generation
+$logUserId = $_SESSION['user_id'] ?? 'unknown';
+addBlockchainLogWithFallback($conn, $logUserId, 'PV_PRINT', $pv_number, [
+    'purchase_id' => $id,
+    'pv_number' => $pv_number,
+    'supplier' => $row['supplier'],
+    'added_by' => $row['user_name'] ?? ''
+]);
 
 // Line length for Letter size (~80 chars)
 $line_len = 80;

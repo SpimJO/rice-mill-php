@@ -227,7 +227,7 @@ table tr:hover { background:#f9f9f9; }
             <li><a href="milling.php"><i class="fa-solid fa-industry"></i> Milling Management</a></li>
             <li><a href="products.php"><i class="fa-solid fa-box"></i> Products & Inventory</a></li>
             <li><a href="reports.php"><i class="fa-solid fa-file-lines"></i> Reports</a></li>
-            <li><a href="blockchain.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
+            <li><a href="index.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
         </ul>
     </div>
     <div class="logout" onclick="window.location.href='logout.php'">
@@ -375,8 +375,12 @@ function openPrintPV(id) {
           // Optional: send to printer
           return fetch('print_receipt.php', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: 'receiptText=' + encodeURIComponent(pvText)
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  receiptText: pvText,
+                  transactionId: 'PV-' + id,
+                  source: 'PALAY_PV_PRINT'
+              })
           }).then(res => res.text()).then(() => pvText);
       })
       .then(pvText => {

@@ -89,7 +89,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv' && isset($_SESSION['repor
         'export_time' => date('Y-m-d H:i:s'),
         'rows' => is_array($_SESSION['report_data']) ? count($_SESSION['report_data']) : 0
     ]);
-    createBlockchainLog($export_user_id, 'Export Report CSV', $current_user_name, $export_details);
+    addBlockchainLogWithFallback($conn, $export_user_id, 'Export Report CSV', $current_user_name, json_decode($export_details, true));
     
     fclose($output);
     exit;
@@ -202,44 +202,43 @@ if (isset($_POST['generate'])) {
                 $summary_value_field = 'total';
                 break;
 
-                case 'purchases':
-                    $query = "
-                        SELECT 
-                            p.id AS id,
-                            COALESCE(p.pv_number, CONCAT('PV-', DATE_FORMAT(p.purchase_date,'%Y%m%d'), '-', p.id)) AS pv_number,
-                            p.supplier AS supplier,
-                            p.quantity AS quantity,
-                            p.price AS price,
-                            p.total_amount AS total_amount,
-                            DATE(p.purchase_date) AS purchase_date,
-                            p.pv_printed AS pv_printed,
-                            u.name AS operator_name,
-                            p.payment_status AS payment_status
-                        FROM palay_purchases p
-                        LEFT JOIN users u ON p.user_id = u.user_id
-                        WHERE DATE(p.purchase_date) BETWEEN '$from_esc' AND '$to_esc'
-                        " . (!empty($transaction_id) ? " AND (p.pv_number = '$tx_esc' OR CONCAT('PV-', DATE_FORMAT(p.purchase_date,'%Y%m%d'), '-', p.id) = '$tx_esc') " : "") . "
-                        ORDER BY p.purchase_date ASC
-                    ";
-                    $report_columns = ['ID','PV Number','Supplier','Quantity (kg)','Price/kg','Total Amount','Purchase Date','PV Printed','Added By','Payment Status'];
-                    $report_columns_map = [
-                        'ID' => 'id',
-                        'PV Number' => 'pv_number',
-                        'Supplier' => 'supplier',
-                        'Quantity (kg)' => 'quantity',
-                        'Price/kg' => 'price',
-                        'Total Amount' => 'total_amount',
-                        'Purchase Date' => 'purchase_date',
-                        'PV Printed' => 'pv_printed',
-                        'Added By' => 'operator_name',
-                        'Payment Status' => 'payment_status'
-                    ];
-                    $sum_columns = ['quantity','total_amount'];
-                    $summary_table = 'palay_purchases';
-                    $summary_date_field = 'purchase_date';
-                    $summary_value_field = "IF(payment_status='Paid', total_amount, 0)"; // ignore voided in summary
-                    break;
-
+            case 'purchases':
+                $query = "
+                    SELECT 
+                        p.id AS id,
+                        COALESCE(p.pv_number, CONCAT('PV-', DATE_FORMAT(p.purchase_date,'%Y%m%d'), '-', p.id)) AS pv_number,
+                        p.supplier AS supplier,
+                        p.quantity AS quantity,
+                        p.price AS price,
+                        p.total_amount AS total_amount,
+                        DATE(p.purchase_date) AS purchase_date,
+                        p.pv_printed AS pv_printed,
+                        u.name AS operator_name,
+                        p.payment_status AS payment_status
+                    FROM palay_purchases p
+                    LEFT JOIN users u ON p.user_id = u.user_id
+                    WHERE DATE(p.purchase_date) BETWEEN '$from_esc' AND '$to_esc'
+                    " . (!empty($transaction_id) ? " AND (p.pv_number = '$tx_esc' OR CONCAT('PV-', DATE_FORMAT(p.purchase_date,'%Y%m%d'), '-', p.id) = '$tx_esc') " : "") . "
+                    ORDER BY p.purchase_date ASC
+                ";
+                $report_columns = ['ID','PV Number','Supplier','Quantity (kg)','Price/kg','Total Amount','Purchase Date','PV Printed','Added By','Payment Status'];
+                $report_columns_map = [
+                    'ID' => 'id',
+                    'PV Number' => 'pv_number',
+                    'Supplier' => 'supplier',
+                    'Quantity (kg)' => 'quantity',
+                    'Price/kg' => 'price',
+                    'Total Amount' => 'total_amount',
+                    'Purchase Date' => 'purchase_date',
+                    'PV Printed' => 'pv_printed',
+                    'Added By' => 'operator_name',
+                    'Payment Status' => 'payment_status'
+                ];
+                $sum_columns = ['quantity','total_amount'];
+                $summary_table = 'palay_purchases';
+                $summary_date_field = 'purchase_date';
+                $summary_value_field = "IF(payment_status='Paid', total_amount, 0)"; // ignore voided in summary
+                break;
 
             case 'milling':
                 $query = "
@@ -271,7 +270,6 @@ if (isset($_POST['generate'])) {
                 break;
 
             case 'inventory':
-                // Pull data from inventory_history table
                 $query = "
                     SELECT 
                         rice_type,
@@ -285,11 +283,7 @@ if (isset($_POST['generate'])) {
                     WHERE snapshot_date BETWEEN '$from_esc' AND '$to_esc'
                     ORDER BY snapshot_date ASC
                 ";
-                
-                // Columns to display in report
                 $report_columns = ['Rice Type','Total 25kg','Total 50kg','Total 5kg','Total KG','Snapshot Date','Source'];
-                
-                // Map columns to database fields
                 $report_columns_map = [
                     'Rice Type' => 'rice_type',
                     'Total 25kg' => 'total_25kg',
@@ -297,14 +291,10 @@ if (isset($_POST['generate'])) {
                     'Total 5kg' => 'total_5kg',
                     'Total KG' => 'total_kg',
                     'Snapshot Date' => 'updated_at',
-                    'Source' => 'source'   // New column for reference_type
+                    'Source' => 'source'
                 ];
-                
-                // Columns to sum (if needed)
                 $sum_columns = ['total_25kg','total_50kg','total_5kg','total_kg'];
-                
-                // No summary table for inventory snapshots
-                $summary_table = ''; 
+                $summary_table = '';
                 $summary_date_field = '';
                 $summary_value_field = '';
                 break;
@@ -329,8 +319,6 @@ if (isset($_POST['generate'])) {
                 break;
 
             case 'voids':
-                // We'll fetch Voided Sales and Voided Purchases separately below when rendering.
-                // To keep same variable shapes as other reports, we'll set placeholders
                 $report_columns = ['ID','User','Category','Action Type','Item Name','Size','Quantity','Reason','Date'];
                 $report_columns_map = [
                     'ID' => 'id',
@@ -344,69 +332,65 @@ if (isset($_POST['generate'])) {
                     'Date' => 'created_at'
                 ];
                 $sum_columns = ['qty'];
-                // no summary for voids
                 $summary_table = '';
                 $summary_date_field = '';
                 $summary_value_field = '';
-                // We'll fetch the two result sets below
                 break;
-case 'products':
-    $query = "
-        SELECT 
-            id,
-            rice_type,
-            sack_25kg,
-            sack_50kg,
-            sack_5kg,
-            total_kg,
-            operator_user_id,
-            DATE(created_at) AS created_at,
-            DATE(updated_at) AS updated_at
-        FROM products
-        WHERE DATE(created_at) BETWEEN '$from_esc' AND '$to_esc'
-        ORDER BY created_at ASC
-    ";
 
-    $report_columns = [
-        'ID',
-        'Rice Type',
-        '25kg Sacks',
-        '50kg Sacks',
-        '5kg Sacks',
-        'Total KG',
-        'Operator ID',
-        'Created At',
-        'Updated At'
-    ];
+            case 'products':
+                $query = "
+                    SELECT 
+                        id,
+                        rice_type,
+                        sack_25kg,
+                        sack_50kg,
+                        sack_5kg,
+                        total_kg,
+                        operator_user_id,
+                        DATE(created_at) AS created_at,
+                        DATE(updated_at) AS updated_at
+                    FROM products
+                    WHERE DATE(created_at) BETWEEN '$from_esc' AND '$to_esc'
+                    ORDER BY created_at ASC
+                ";
 
-    $report_columns_map = [
-        'ID' => 'id',
-        'Rice Type' => 'rice_type',
-        '25kg Sacks' => 'sack_25kg',
-        '50kg Sacks' => 'sack_50kg',
-        '5kg Sacks' => 'sack_5kg',
-        'Total KG' => 'total_kg',
-        'Operator ID' => 'operator_user_id',
-        'Created At' => 'created_at',
-        'Updated At' => 'updated_at'
-    ];
+                $report_columns = [
+                    'ID',
+                    'Rice Type',
+                    '25kg Sacks',
+                    '50kg Sacks',
+                    '5kg Sacks',
+                    'Total KG',
+                    'Operator ID',
+                    'Created At',
+                    'Updated At'
+                ];
 
-    $sum_columns = ['sack_25kg','sack_50kg','sack_5kg','total_kg'];
-    $summary_table = 'products';
-    $summary_date_field = 'created_at';
-    $summary_value_field = 'total_kg';
-    break;
+                $report_columns_map = [
+                    'ID' => 'id',
+                    'Rice Type' => 'rice_type',
+                    '25kg Sacks' => 'sack_25kg',
+                    '50kg Sacks' => 'sack_50kg',
+                    '5kg Sacks' => 'sack_5kg',
+                    'Total KG' => 'total_kg',
+                    'Operator ID' => 'operator_user_id',
+                    'Created At' => 'created_at',
+                    'Updated At' => 'updated_at'
+                ];
 
-
+                $sum_columns = ['sack_25kg','sack_50kg','sack_5kg','total_kg'];
+                $summary_table = 'products';
+                $summary_date_field = 'created_at';
+                $summary_value_field = 'total_kg';
+                break;
 
             default:
                 $query = '';
                 $error = 'Please select a valid report type.';
                 break;
         }
-                   
+
         if ($report_type === 'voids') {
-            // special handling: separate queries for voided sales and voided purchases
             $q_voids = "
                 SELECT 
                     id,
@@ -426,7 +410,6 @@ case 'products':
             $report_data = [];
             $report_data['Voided Items'] = $res_voids ? $res_voids->fetch_all(MYSQLI_ASSOC) : [];
 
-            // totals for voids optional (sum qty per category)
             $totals = [];
             foreach ($report_data as $cat => $rows) {
                 $sum = 0;
@@ -442,7 +425,6 @@ case 'products':
             $_SESSION['report_type'] = $report_type;
             $_SESSION['report_totals'] = $totals;
         } else {
-            // standard reports (non-voids)
             if (!empty($query)) {
                 $result = $conn->query($query);
                 if (!$result) {
@@ -450,7 +432,6 @@ case 'products':
                 } else {
                     $report_data = $result->fetch_all(MYSQLI_ASSOC);
 
-                    // compute totals
                     $totals = [];
                     foreach ($report_data as $r) {
                         if (($r['payment_status'] ?? '') === 'Paid') {
@@ -462,7 +443,6 @@ case 'products':
                         }
                     }
 
-                    // build summary rows if applicable
                     if (!empty($summary_table) && !empty($summary_value_field)) {
                         $label_select = "DATE($summary_date_field) AS period_label";
                         $group_by = "DATE($summary_date_field)";
@@ -470,7 +450,6 @@ case 'products':
                             $label_select = "DATE($summary_date_field) AS period_label";
                             $group_by = "DATE($summary_date_field)";
                         } elseif ($frequency === 'weekly') {
-                            // Monday-start week (WEEK(...,1))
                             $label_select = "CONCAT(YEAR($summary_date_field), '-W', WEEK($summary_date_field, 1)) AS period_label";
                             $group_by = "YEAR($summary_date_field), WEEK($summary_date_field, 1)";
                         } elseif ($frequency === 'monthly') {
@@ -505,29 +484,27 @@ case 'products':
                         if ($sr) $summary_rows = $sr->fetch_all(MYSQLI_ASSOC);
                     }
 
-                    // save for CSV
                     $_SESSION['report_data'] = $report_data;
                     $_SESSION['report_columns'] = $report_columns;
                     $_SESSION['report_columns_map'] = $report_columns_map;
                     $_SESSION['report_type'] = $report_type;
                     $_SESSION['report_totals'] = $totals;
-
-                 
-
                 }
             }
         }
     }
-       // --- Blockchain log: Report Generated ---
-$log_data = json_encode([
-    'report_type' => $report_type,
-    'from' => $from,
-    'to' => $to,
-    'frequency' => $frequency,
-    'rows' => count($report_data)
-]);
-createBlockchainLog(intval($current_user_id), 'Generate Report', $current_user_name, $log_data);
 }
+
+    // --- Blockchain log: Report Generated ---
+    if (isset($_POST['generate']) && empty($error)) {
+        addBlockchainLogWithFallback($conn, intval($current_user_id), 'Generate Report', $current_user_name, [
+            'report_type' => $report_type,
+            'from' => $from,
+            'to' => $to,
+            'frequency' => $frequency,
+            'rows' => count($report_data)
+        ]);
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -793,7 +770,7 @@ table tr:nth-child(even) { background: #f9f9f9; }
       <li><a href="milling.php"><i class="fa-solid fa-industry"></i> Milling Management</a></li>
       <li><a href="products.php"><i class="fa-solid fa-box"></i> Products & Inventory</a></li>
       <li class="active"><a href="reports.php"><i class="fa-solid fa-file-lines"></i> Reports</a></li>
-      <li><a href="blockchain.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
+    <li><a href="index.php"><i class="fa-solid fa-link"></i> Blockchain Log</a></li>
     </ul>
   </div>
   <div class="logout" onclick="window.location.href='logout.php'">
